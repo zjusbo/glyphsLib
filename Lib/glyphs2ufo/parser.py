@@ -60,6 +60,10 @@ class Parser:
         if m:
             parsed, value = m.group(0), self._trim_value(m.group(1))
             i += len(parsed)
+            try:  # might throw if there is a key that is not covered in `classToName`
+                value = self.dict_type(value)
+            except:
+                pass
             return value, i
 
         else:
@@ -67,7 +71,7 @@ class Parser:
 
     def _parse_dict(self, text, i):
         """Parse a dictionary from source text starting at i."""
-
+        old_dict_type = self.dict_type
         res = self.dict_type()
         end_match = self.end_dict_re.match(text, i)
         while not end_match:
@@ -75,6 +79,8 @@ class Parser:
             if not m:
                 self._fail('Unexpected dictionary content', text, i)
             parsed, name = m.group(0), self._trim_value(m.group(1))
+            if hasattr(res, "classForName"):
+                self.dict_type = res.classForName(name)
             i += len(parsed)
             res[name], i = self._parse(text, i)
 
@@ -86,7 +92,7 @@ class Parser:
             i += len(parsed)
 
             end_match = self.end_dict_re.match(text, i)
-
+        self.dict_type = old_dict_type
         parsed = end_match.group(0)
         i += len(parsed)
         return res, i
@@ -96,6 +102,7 @@ class Parser:
 
         res = []
         end_match = self.end_list_re.match(text, i)
+        old_dict_type = self.dict_type
         while not end_match:
             list_item, i = self._parse(text, i)
             res.append(list_item)
@@ -111,6 +118,7 @@ class Parser:
                 i += len(parsed)
 
         parsed = end_match.group(0)
+        self.dict_type = old_dict_type
         i += len(parsed)
         return res, i
 

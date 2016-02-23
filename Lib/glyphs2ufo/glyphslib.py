@@ -25,6 +25,7 @@ import tempfile
 from glyphs2ufo.casting import cast_data
 from glyphs2ufo.parser import Parser
 from glyphs2ufo.torf import to_robofab
+from glyphs2ufo.classes import GFont
 
 __all__ = [
     "build_masters", "build_instances", "load_to_ufos", "load", "loads",
@@ -38,15 +39,15 @@ def load(fp, dict_type=dict):
 	return loads(fp.read(), dict_type=dict_type)
 
 
-def loads(value, dict_type=dict):
+def loads(value, dict_type=GFont):
 	"""Read a .glyphs file from a bytes object.
-	Return the unpacked root object (which usually is a dictionary).
+	Return the unpacked root object.
 	"""
 	p = Parser(dict_type=dict_type)
 	print('>>> Parsing .glyphs file')
 	data = p.parse(value)
-	print('>>> Casting parsed values')
-	cast_data(data)
+	#print('>>> Casting parsed values')
+	#cast_data(data)
 	return data
 
 
