@@ -72,7 +72,10 @@ class Parser:
     def _parse_dict(self, text, i):
         """Parse a dictionary from source text starting at i."""
         old_dict_type = self.dict_type
-        res = self.dict_type()
+        new_type = self.dict_type
+        if type(new_type) == list:
+            new_type = new_type[0]
+        res = new_type()
         end_match = self.end_dict_re.match(text, i)
         while not end_match:
             m = self.attr_re.match(text, i)

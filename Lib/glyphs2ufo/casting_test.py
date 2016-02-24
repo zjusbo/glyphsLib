@@ -16,7 +16,7 @@
 from __future__ import print_function, division, absolute_import
 
 import unittest
-from glyphs2ufo.casting import cast_data
+from glyphs2ufo.casting import cast_data, needsQuotes
 
 
 class GlyphsDatetimeTest(unittest.TestCase):
@@ -53,7 +53,13 @@ class GlyphsDatetimeTest(unittest.TestCase):
         self.compare_parsed_date_string(
             '2001-02-03 00:05:06 -0010',
             (2001, 2, 2, 23, 55, 6))
-
+    def test_write_foats(self):
+        self.assertTrue(needsQuotes("123"))
+        self.assertTrue(needsQuotes("1bc"))
+        self.assertFalse(needsQuotes("a1c"))
+        self.assertFalse(needsQuotes(123))
+        self.assertFalse(needsQuotes("abc"))
+        self.assertTrue(needsQuotes("ab c"))
 
 if __name__ == '__main__':
     unittest.main()

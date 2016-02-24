@@ -18,6 +18,7 @@ from __future__ import print_function, division, absolute_import
 import datetime
 import json
 import re
+import traceback, math
 
 __all__ = [
     'cast_data'
@@ -364,3 +365,64 @@ def user_data(data_dict):
 
     data_dict.update(new_data)
     return data_dict
+
+
+NSPropertyListNameSet = (
+    False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, # 0
+    False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, False, # 16
+    False, False, False, False, True, False, False, False, False, False, False, False, False, False, True, True, # 32
+    True, True, True, True, True, True, True, True, True, True, False, False, False, False, False, False, # 48
+    False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, # 64
+    True, True, True, True, True, True, True, True, True, True, True, False, False, False, False, True, # 80
+    False, True, True, True, True, True, True, True, True, True, True, True, True, True, True, True, # 96
+    True, True, True, True, True, True, True, True, True, True, True, False, False, False, False, False, # 112
+    )
+
+
+def needsQuotes(string):
+    if isinstance(string, (int, float, bool)):
+        return False
+    if not isinstance(string, (str, unicode)):
+        string = str(string)
+    
+    if string[0] >= "0" and string[0] <= "9":
+        return True
+    for i in range(len(string)):
+        Ord = ord(string[i])
+        if Ord >= 128:
+            return True
+        elif not NSPropertyListNameSet[Ord]:
+            return True
+    return False
+
+
+def actualPrecition(Float):
+    ActualPrecition = 3
+    Integer = round(Float * 1000.0)
+    while ActualPrecition >= 0:
+        if Integer != round(Integer / 10.0) * 10:
+            return ActualPrecition
+        
+        Integer = round(Integer / 10.0)
+        ActualPrecition -= 1
+    
+    if ActualPrecition < 0:
+        ActualPrecition = 0
+    return ActualPrecition
+
+
+def floatToString(Float, precision = 3):
+    try:
+        ActualPrecition = actualPrecition(Float)
+        precision = min(precision, ActualPrecition)
+        fractional = math.modf(math.fabs(Float))[0]
+        if precision >= 3 and fractional >= 0.001 and fractional <= 0.999:
+            return "%.3f" % Float
+        if precision == 2 and fractional >= 0.01 and fractional <= 0.99:
+            return "%.2f" % Float
+        if precision == 1 and fractional >= 0.1 and fractional <= 0.9:
+            return "%.1f" % Float
+        else:
+            return "%d" % Float
+    except:
+        print(traceback.format_exc())

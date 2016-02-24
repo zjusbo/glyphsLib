@@ -16,7 +16,7 @@
 
 import re
 
-from casting import num, transform, point, glyphs_datetime, CUSTOM_INT_PARAMS, CUSTOM_FLOAT_PARAMS, CUSTOM_TRUTHY_PARAMS, CUSTOM_INTLIST_PARAMS
+from casting import num, transform, point, glyphs_datetime, CUSTOM_INT_PARAMS, CUSTOM_FLOAT_PARAMS, CUSTOM_TRUTHY_PARAMS, CUSTOM_INTLIST_PARAMS, floatToString, truthy
 
 __all__ = [
 	"GSFont", "GSCustomParameter", "GSInstance", 
@@ -47,11 +47,7 @@ class GSBase(object):
 	
 	def classForName(self, name):
 		return self._classesForName.get(name, str)
-
-	def __setitem___(self, key, value):
-		if not hasattr(self, "_dict"):
-			self._dict = {}
-		self._dict[key] = value
+	
 	def __setitem__(self, key, value):
 		if type(value) is str and key in self._classesForName:
 			value = self._classesForName[key](value)
@@ -63,15 +59,15 @@ class GSCustomParameter(GSBase):
 		"name": str,
 		"value": str,  # TODO: check 'name' to determine proper class
 	}
+	
 	def __repr__(self):
 		return "<%s %s: %s>" % (self.__class__.__name__, self.name, self._value)
 	
 	def getValue(self):
-		return self_value
+		return self._value
 	
 	def setValue(self, value):
 		"""Cast some known data in custom parameters."""
-		
 		if self.name in CUSTOM_INT_PARAMS:
 			value = int(value)
 		if self.name in CUSTOM_FLOAT_PARAMS:
@@ -88,7 +84,7 @@ class GSCustomParameter(GSBase):
 
 class GSInstance(GSBase):
 	_classesForName = {
-		"exports": bool,
+		"exports": truthy,
 		"unitsPerEm": int,
 		"customParameter": GSCustomParameter,
 	}
@@ -96,7 +92,9 @@ class GSInstance(GSBase):
 	def __init__(self):
 		self.exports = True
 		self.name = "Regular"
-
+	
+	def interpolatedFont(self):
+		pass
 
 class GSAlignmentZone(GSBase):
 	_classesForName = {}
@@ -106,15 +104,17 @@ class GSAlignmentZone(GSBase):
 			self.position, self.size = point(line)
 	def __repr__(self):
 		return "<%s pos:%g size:%g>" % (self.__class__.__name__, self.position, self.size)
-
+		
+	def plistValue(self):
+		return "\"{%s, %s}\"" % (floatToString(self.position), floatToString(self.size))
 
 class GSGuideLine(GSBase):
 	_classesForName = {
 		"alignment": str,
 		"angle": float,
-		"locked": bool,
+		"locked": truthy,
 		"position": point,
-		"showMeasurement": bool,
+		"showMeasurement": truthy,
 	}
 
 
@@ -129,10 +129,11 @@ class GSFontMaster(GSBase):
 		"descender": float,
 		"guideLines": GSGuideLine,
 		"horizontalStems": int,
+		"id": str,
 		"italicAngle": float,
 		"userData": dict,
 		"verticalStems": int,
-		"visible": bool,
+		"visible": truthy,
 		"weight": str,
 		"weightValue": float,
 		"width": str,
@@ -161,12 +162,17 @@ class GSNode(GSBase):
 		if self.smooth:
 			content += " smooth"
 		return "<%s %g %g %s>" % (self.__class__.__name__, self.position[0], self.position[1], content)
-
+	
+	def plistValue(self):
+		content = self.type.upper()
+		if self.smooth:
+			content += " SMOOTH"
+		return "\"%s %s %s\"" % (floatToString(self.position[0]), floatToString(self.position[1]), content)
 
 class GSPath(GSBase):
 	_classesForName = {
 		"nodes": GSNode,
-		"closed": bool
+		"closed": truthy
 	}
 
 
@@ -174,7 +180,7 @@ class GSComponent(GSBase):
 	_classesForName = {
 		"alignment": int,
 		"anchor": str,
-		"locked": bool,
+		"locked": truthy,
 		"name": str,
 		"piece": dict,
 		"transform": transform,
@@ -190,7 +196,7 @@ class GSAnchor(GSBase):
 
 class GSHint(GSBase):
 	_classesForName = {
-		"horizontal": bool,
+		"horizontal": truthy,
 		"options": int, # bitfield
 		"origin": point, # Index path to node
 		"other1": point, # Index path to node for third node
@@ -205,7 +211,7 @@ class GSHint(GSBase):
 
 class GSFeature(GSBase):
 	_classesForName = {
-		"automatic": bool,
+		"automatic": truthy,
 		"code": unicode,
 		"name": str,
 		"notes": unicode,
@@ -224,7 +230,7 @@ class GSFeature(GSBase):
 
 class GSClass(GSFeature):
 	_classesForName = {
-		"automatic": bool,
+		"automatic": truthy,
 		"code": unicode,
 		"name": str,
 		"notes": unicode,
@@ -244,15 +250,15 @@ class GSAnnotation(GSBase):
 class GSInstance(GSBase):
 	_classesForName = {
 		"customParameters": GSCustomParameter,
-		"exports": bool,
+		"exports": truthy,
 		"instanceInterpolations": dict,
 		"interpolationCustom": float,
 		"interpolationWeight": float,
 		"interpolationWidth": float,
-		"isBold": bool,
-		"isItalic": bool,
+		"isBold": truthy,
+		"isItalic": truthy,
 		"linkStyle": str,
-		"manualInterpolation": bool,
+		"manualInterpolation": truthy,
 		"name": str,
 		"weightClass": str,
 		"widthClass": str,
@@ -277,7 +283,7 @@ class GSLayer(GSBase):
 		"rightMetricsKey": str,
 		"userData": dict,
 		"vertWidth": float,
-		"visible": bool,
+		"visible": truthy,
 		"width": float,
 		"widthMetricsKey": str,
 	}
@@ -289,7 +295,7 @@ class GSGlyph(GSBase):
 		"bottomMetricsKey": str,
 		"category": str,
 		"color": color,
-		"export":bool,
+		"export":truthy,
 		"glyphname": str,
 		"lastChange": glyphs_datetime,
 		"layers": GSLayer,
@@ -312,16 +318,17 @@ class GSGlyph(GSBase):
 
 
 class GSFont(GSBase):
-	
 	_classesForName = {
+		".appVersion": str,
+		"DisplayStrings": [str],
 		"classes": GSClass,
 		"copyright": unicode,
 		"customParameters": GSCustomParameter,
 		"date": glyphs_datetime,
 		"designer": unicode,
 		"designerURL": unicode,
-		"disablesAutomaticAlignment": bool,
-		"disablesNiceNames": bool,
+		"disablesAutomaticAlignment": truthy,
+		"disablesNiceNames": truthy,
 		"familyName": str,
 		"featurePrefixes": GSClass,
 		"features": GSFeature,
@@ -331,7 +338,7 @@ class GSFont(GSBase):
 		"gridSubDivision": int,
 		"instances": GSInstance,
 		"instances": GSInstance,
-		"keepAlternatesTogether": bool,
+		"keepAlternatesTogether": truthy,
 		"kerning": dict,
 		"manufacturer": unicode,
 		"manufacturerURL": str,
@@ -342,7 +349,6 @@ class GSFont(GSBase):
 	}
 	
 	def __init__(self):
-		print "__GSFont init"
 		self.familyName = "Unnamed font"
 		self._versionMinor = 0
 		self.versionMajor = 1
