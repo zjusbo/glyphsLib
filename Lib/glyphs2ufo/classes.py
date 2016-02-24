@@ -16,7 +16,7 @@
 
 import re
 
-from casting import num, transform, point, glyphs_datetime
+from casting import num, transform, point, glyphs_datetime, CUSTOM_INT_PARAMS, CUSTOM_FLOAT_PARAMS, CUSTOM_TRUTHY_PARAMS, CUSTOM_INTLIST_PARAMS
 
 __all__ = [
 	"GSFont", "GSCustomParameter", "GSInstance", 
@@ -38,7 +38,7 @@ def hint_target(line):
 	else:
 		return line
 
-class GSBase():
+class GSBase(object):
 	def __repr__(self):
 		content = ""
 		if hasattr(self, "_dict"):
@@ -61,9 +61,30 @@ class GSBase():
 class GSCustomParameter(GSBase):
 	_classesForName = {
 		"name": str,
-		"value": str  # TODO: check 'name' to determine proper class
+		"value": str,  # TODO: check 'name' to determine proper class
 	}
-
+	def __repr__(self):
+		return "<%s %s: %s>" % (self.__class__.__name__, self.name, self._value)
+	
+	def getValue(self):
+		return self_value
+	
+	def setValue(self, value):
+		"""Cast some known data in custom parameters."""
+		
+		if self.name in CUSTOM_INT_PARAMS:
+			value = int(value)
+		if self.name in CUSTOM_FLOAT_PARAMS:
+			value = float(value)
+		if self.name in CUSTOM_TRUTHY_PARAMS:
+			value = truthy(value)
+		if self.name in CUSTOM_INTLIST_PARAMS:
+			value = intlist(value)
+		elif self.name == 'DisableAllAutomaticBehaviour':
+			value = truthy(value)
+		self._value = value
+	
+	value = property(getValue, setValue)
 
 class GSInstance(GSBase):
 	_classesForName = {
@@ -71,7 +92,7 @@ class GSInstance(GSBase):
 		"unitsPerEm": int,
 		"customParameter": GSCustomParameter,
 	}
-
+	
 	def __init__(self):
 		self.exports = True
 		self.name = "Regular"
@@ -189,9 +210,19 @@ class GSFeature(GSBase):
 		"name": str,
 		"notes": unicode,
 	}
+	def getCode(self):
+		return self._code
+		
+	def setCode(self, code):
+		replacements = (
+			('\\012', '\n'), ('\\011', '\t'), ('\\U2018', "'"), ('\\U2019', "'"),
+			('\\U201C', '"'), ('\\U201D', '"'))
+		for escaped, unescaped in replacements:
+			code = code.replace(escaped, unescaped)
+		self._code = code
+	code = property(getCode, setCode)
 
-
-class GSClass(GSBase):
+class GSClass(GSFeature):
 	_classesForName = {
 		"automatic": bool,
 		"code": unicode,
@@ -313,6 +344,19 @@ class GSFont(GSBase):
 	def __init__(self):
 		print "__GSFont init"
 		self.familyName = "Unnamed font"
-
+		self._versionMinor = 0
+		self.versionMajor = 1
+	
 	def __repr__(self):
 		return "<%s \"%s\">" % (self.__class__.__name__, self.familyName)
+	
+	def getVersionMinor(self):
+		return self._versionMinor
+	
+	def setVersionMinor(self, value):
+		"""Ensure that the minor version number is between 0 and 999."""
+		assert value >= 0 and value <= 999
+		self._versionMinor = value
+	
+	versionMinor = property(getVersionMinor, setVersionMinor)
+
