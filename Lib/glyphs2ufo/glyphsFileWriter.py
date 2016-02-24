@@ -16,7 +16,7 @@
 
 import sys, traceback
 from classes import GSBase
-from casting import needsQuotes, floatToString
+from casting import needsQuotes, floatToString, feature_syntax_encode
 import datetime
 
 
@@ -46,19 +46,27 @@ class GlyphsWriter(object):
 	
 	def writeDict(self, dictValue):
 		self.file.write("{\n")
+		forType = None
 		if hasattr(dictValue, "_classesForName"):
 			keys = dictValue._classesForName.keys()
 		else:
 			keys = dictValue.keys()
 		keys.sort()
 		for key in keys:
+			
+			if hasattr(dictValue, "_classesForName"):
+				forType = dictValue._classesForName[key]
 			try:
-				value = getattr(dictValue, key)
-				self.file.write("%s = " % key)
-				self.writeValue(value, key)
-				self.file.write(";\n")
+				if type(dictValue) == dict:
+					value = dictValue[key]
+				else:
+					value = getattr(dictValue, key)
 			except AttributeError:
-				pass
+				continue
+			#print "__key", key
+			self.writeKey(key)
+			self.writeValue(value, key, forType=forType)
+			self.file.write(";\n")
 		self.file.write("}")
 	
 	def writeArray(self, arrayValue):
@@ -74,9 +82,14 @@ class GlyphsWriter(object):
 			idx += 1
 		self.file.write(")")
 	
-	def writeValue(self, value, forKey = None):
+	def writeValue(self, value, forKey = None, forType = None):
 		try:
-			if type(value) == list:
+			# print "__erite", value, forKey, forType
+			if forKey == "transform":
+				self.file.write("\"{%s}\"" % ", ".join([floatToString(f, 5) for f in value]))
+			elif forKey == "position" or forKey == "place":
+				self.file.write("\"{%s}\"" % ", ".join([floatToString(f) for f in value]))
+			elif type(value) == list:
 				self.writeArray(value)
 			elif hasattr(value, "plistValue"):
 				value = value.plistValue()
@@ -95,10 +108,19 @@ class GlyphsWriter(object):
 			elif type(value) == datetime.datetime:
 				self.file.write("\"%s +0000\"" % str(value))
 			else:
-				value = str(value)
+				if (forType == unicode):
+					value = value.encode("utf-8")
+				else:
+					value = str(value)
+				value = feature_syntax_encode(value)
 				if needsQuotes(value) and forKey != "unicode":
 					self.file.write("\"%s\"" % value)
 				else:
 					self.file.write(value)
 		except:
 			print traceback.format_exc()
+	def writeKey(self, key):
+		if needsQuotes(key):
+			self.file.write("\"%s\" = " % key)
+		else:
+			self.file.write("%s = " % key)

@@ -54,12 +54,15 @@ class GlyphsDatetimeTest(unittest.TestCase):
             '2001-02-03 00:05:06 -0010',
             (2001, 2, 2, 23, 55, 6))
     def test_write_foats(self):
-        self.assertTrue(needsQuotes("123"))
+        self.assertFalse(needsQuotes("123"))
+        self.assertFalse(needsQuotes("-12.3"))
         self.assertTrue(needsQuotes("1bc"))
         self.assertFalse(needsQuotes("a1c"))
         self.assertFalse(needsQuotes(123))
         self.assertFalse(needsQuotes("abc"))
         self.assertTrue(needsQuotes("ab c"))
+        self.assertTrue(needsQuotes("-abc"))
+        self.assertTrue(needsQuotes("0999301F-2F30-44A7-92A9-D7FD9F243760"))
 
 if __name__ == '__main__':
     unittest.main()

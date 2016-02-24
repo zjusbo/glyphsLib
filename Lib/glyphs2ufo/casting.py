@@ -95,7 +95,7 @@ def get_type_structure():
         'DisplayStrings': list,
         'classes': {
             'automatic': truthy,
-            'code': feature_syntax,
+            'code': feature_syntax_decode,
             'name': str
         },
         'copyright': str,
@@ -108,15 +108,15 @@ def get_type_structure():
         'familyName': str,
         'featurePrefixes': {
             'automatic': truthy,  # undocumented
-            'code': feature_syntax,
+            'code': feature_syntax_decode,
             'name': str
         },
         'features': {
             'automatic': truthy,
-            'code': feature_syntax,
+            'code': feature_syntax_decode,
             'disabled': truthy,  # undocumented
             'name': str,
-            'notes': feature_syntax  # undocumented
+            'notes': feature_syntax_decode  # undocumented
         },
         'fontMaster': {
             'alignmentZones': pointlist,
@@ -319,7 +319,7 @@ def version_minor(string):
     return num
 
 
-def feature_syntax(string):
+def feature_syntax_decode(string):
     """Replace escaped characters with their intended characters.
     Unescapes curved quotes to straight quotes, so that we can definitely
     include this casted data in feature syntax.
@@ -333,9 +333,23 @@ def feature_syntax(string):
     return string
 
 
+def feature_syntax_encode(string):
+    """Replace escaped characters with their intended characters.
+    Unescapes curved quotes to straight quotes, so that we can definitely
+    include this casted data in feature syntax.
+    """
+
+    replacements = (
+        ('\\012', '\n'), ('\\011', '\t'),
+        ('\\U201C', '"'), ('\\U201D', '"'))
+    for escaped, unescaped in replacements:
+        string = string.replace(unescaped, escaped)
+    return string
+
+
 def custom_params(param_list):
     """Cast some known data in custom parameters."""
-
+    
     for param in param_list:
         name = param['name']
         value = param['value']
@@ -384,9 +398,14 @@ def needsQuotes(string):
         return False
     if not isinstance(string, (str, unicode)):
         string = str(string)
-    
-    if string[0] >= "0" and string[0] <= "9":
+    if len(string) == 0:
         return True
+    if string[0] >= "0" and string[0] <= "9" or string[0] == "-":
+        isNumber = True
+        for i in range(len(string)):
+            if string[i] not in "0123456789.-":
+                isNumber = False
+        return not isNumber
     for i in range(len(string)):
         Ord = ord(string[i])
         if Ord >= 128:

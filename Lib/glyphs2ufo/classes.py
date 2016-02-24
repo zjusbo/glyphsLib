@@ -1,4 +1,5 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 #
 # Copyright 2016 Georg Seifert. All Rights Reserved.
 #
@@ -14,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import re
+import re, traceback
 
 from casting import num, transform, point, glyphs_datetime, CUSTOM_INT_PARAMS, CUSTOM_FLOAT_PARAMS, CUSTOM_TRUTHY_PARAMS, CUSTOM_INTLIST_PARAMS, floatToString, truthy
 
@@ -49,10 +50,17 @@ class GSBase(object):
 		return self._classesForName.get(name, str)
 	
 	def __setitem__(self, key, value):
-		if type(value) is str and key in self._classesForName:
-			value = self._classesForName[key](value)
-		setattr(self, key, value)
-
+		try:
+			if type(value) is str and key in self._classesForName:
+				new_type = self._classesForName[key]
+				if new_type is unicode:
+					# print "__set", key
+					value = value.decode('utf-8')
+				else:
+					value = new_type(value)
+			setattr(self, key, value)
+		except:
+			print traceback.format_exc()
 
 class GSCustomParameter(GSBase):
 	_classesForName = {
@@ -82,19 +90,6 @@ class GSCustomParameter(GSBase):
 	
 	value = property(getValue, setValue)
 
-class GSInstance(GSBase):
-	_classesForName = {
-		"exports": truthy,
-		"unitsPerEm": int,
-		"customParameter": GSCustomParameter,
-	}
-	
-	def __init__(self):
-		self.exports = True
-		self.name = "Regular"
-	
-	def interpolatedFont(self):
-		pass
 
 class GSAlignmentZone(GSBase):
 	_classesForName = {}
@@ -102,6 +97,7 @@ class GSAlignmentZone(GSBase):
 	def __init__(self, line = None):
 		if line is not None:
 			self.position, self.size = point(line)
+	
 	def __repr__(self):
 		return "<%s pos:%g size:%g>" % (self.__class__.__name__, self.position, self.size)
 		
@@ -263,6 +259,33 @@ class GSInstance(GSBase):
 		"weightClass": str,
 		"widthClass": str,
 	}
+	
+	def __init__(self):
+		self.exports = True
+		self.name = "Regular"
+		self.name = "Regular"
+		self.linkStyle = ""
+		self.interpolationWeight = 100
+		self.interpolationWidth = 100
+		self.interpolationCustom = 0
+		self.visible = True
+		self.isBold = False
+		self.isItalic = False
+		self.widthClass = "Medium (normal)"
+		self.weightClass = "Regular"
+
+
+class GSBackgroundLayer(GSBase):
+	_classesForName = {
+		"anchors": GSAnchor,
+		"annotations": GSAnnotation,
+		"backgroundImage": dict, # TODO
+		"components": GSComponent,
+		"guideLines": GSGuideLine,
+		"hints": GSHint,
+		"paths": GSPath,
+		"visible": truthy,
+	}
 
 
 class GSLayer(GSBase):
@@ -270,7 +293,7 @@ class GSLayer(GSBase):
 		"anchors": GSAnchor,
 		"annotations": GSAnnotation,
 		"associatedMasterId": str,
-		"background": dict, # TODO shoudl be GSLayer but that is not defined at this point ??
+		"background": GSBackgroundLayer, 
 		"backgroundImage": dict, # TODO
 		"color": color,
 		"components": GSComponent,
@@ -336,7 +359,6 @@ class GSFont(GSBase):
 		"glyphs": GSGlyph,
 		"gridLength": int,
 		"gridSubDivision": int,
-		"instances": GSInstance,
 		"instances": GSInstance,
 		"keepAlternatesTogether": truthy,
 		"kerning": dict,
