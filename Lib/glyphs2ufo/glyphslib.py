@@ -25,7 +25,7 @@ import tempfile
 from glyphs2ufo.casting import cast_data
 from glyphs2ufo.parser import Parser
 from glyphs2ufo.torf import to_robofab
-from glyphs2ufo.classes import GFont
+from glyphs2ufo.classes import GSFont
 
 __all__ = [
     "build_masters", "build_instances", "load_to_ufos", "load", "loads",
@@ -39,7 +39,7 @@ def load(fp, dict_type=dict):
 	return loads(fp.read(), dict_type=dict_type)
 
 
-def loads(value, dict_type=GFont):
+def loads(value, dict_type=GSFont):
 	"""Read a .glyphs file from a bytes object.
 	Return the unpacked root object.
 	"""
