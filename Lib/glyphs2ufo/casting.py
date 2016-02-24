@@ -239,7 +239,7 @@ def num(string):
 
 
 def hex_int(string):
-    """Return the hexidecimal value represented by a string."""
+    """Return the hexadecimal value represented by a string."""
     return int(string, 16)
 
 
