@@ -259,6 +259,8 @@ class GSInstance(GSBase):
 		"weightClass": str,
 		"widthClass": str,
 	}
+	def interpolateFont():
+		
 	
 	def __init__(self):
 		self.exports = True

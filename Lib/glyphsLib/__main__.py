@@ -18,7 +18,8 @@ from __future__ import print_function, division, absolute_import, unicode_litera
 
 import sys
 import argparse
-import glyphs2ufo.glyphslib as glyphslib
+
+import glyphsLib
 
 __version__ = "1.0"
 description = """\n
@@ -30,7 +31,7 @@ or UFO instances and MutatorMath designspace.
 def parse_options(args):
     parser = argparse.ArgumentParser(description=description)
     parser.add_argument("--version", action="version",
-                        version='glyphs2ufo %s' % (__version__))
+                        version='glyphsLib %s' % (__version__))
     parser.add_argument("-g", "--glyphs", metavar="GLYPHS", required=True,
                         help="Glyphs file to convert.")
     parser.add_argument("-m", "--masters", metavar="MASTERS",
@@ -42,9 +43,6 @@ def parse_options(args):
                         help="Output and generate interpolated instances UFO "
                              "to folder INSTANCES. "
                              "(default: %(const)s)")
-    parser.add_argument("-i", "--italic",
-                        help="The fonts are italic.",
-                        action="store_true")
     options = parser.parse_args(args)
     return options
 
@@ -53,10 +51,9 @@ def main(args=None):
     opt = parse_options(args)
     if opt.glyphs is not None:
         if opt.instances is None:
-            glyphslib.build_masters(opt.glyphs, opt.masters, italic=opt.italic)
+            glyphsLib.build_masters(opt.glyphs, opt.masters)
         else:
-            glyphslib.build_instances(opt.glyphs, opt.masters, opt.instances,
-                                      italic=opt.italic)
+            glyphsLib.build_instances(opt.glyphs, opt.masters, opt.instances)
 
 if __name__ == '__main__':
     main(sys.argv[1:])

@@ -25,12 +25,6 @@ __all__ = [
 ]
 
 
-DEFAULTS = {
-    'interpolationWeight': 100,
-    'interpolationWidth': 100,
-    'widthValue': 100,
-    'weightValue': 100}
-
 CUSTOM_INT_PARAMS = frozenset((
     'ascender', 'blueShift', 'capHeight', 'descender', 'hheaAscender',
     'hheaDescender', 'hheaLineGap', 'macintoshFONDFamilyID',
@@ -59,11 +53,13 @@ CUSTOM_FLOAT_PARAMS = frozenset((
     'postscriptBlueScale',))
 
 CUSTOM_TRUTHY_PARAMS = frozenset((
-    'isFixedPitch', 'postscriptForceBold', 'postscriptIsFixedPitch'))
+    'isFixedPitch', 'postscriptForceBold', 'postscriptIsFixedPitch',
+    "Don't use Production Names", 'DisableAllAutomaticBehaviour'))
 
 CUSTOM_INTLIST_PARAMS = frozenset((
     'fsType', 'openTypeOS2CodePageRanges', 'openTypeOS2FamilyClass',
-    'openTypeOS2Panose', 'openTypeOS2Type', 'openTypeOS2UnicodeRanges'))
+    'openTypeOS2Panose', 'openTypeOS2Type', 'openTypeOS2UnicodeRanges',
+    'panose', 'unicodeRanges'))
 
 
 def cast_data(data, types=None):
@@ -74,10 +70,6 @@ def cast_data(data, types=None):
 
     for key, cur_type in types.items():
         if key not in data:
-            try:
-                data[key] = DEFAULTS[key]
-            except KeyError:
-                pass
             continue
         if type(cur_type) == dict:
             for cur_data in data[key]:
@@ -95,7 +87,7 @@ def get_type_structure():
         'DisplayStrings': list,
         'classes': {
             'automatic': truthy,
-            'code': feature_syntax_decode,
+            'code': normalized,
             'name': str
         },
         'copyright': str,
@@ -108,21 +100,22 @@ def get_type_structure():
         'familyName': str,
         'featurePrefixes': {
             'automatic': truthy,  # undocumented
-            'code': feature_syntax_decode,
+            'code': normalized,
             'name': str
         },
         'features': {
             'automatic': truthy,
-            'code': feature_syntax_decode,
+            'code': normalized,
             'disabled': truthy,  # undocumented
             'name': str,
-            'notes': feature_syntax_decode  # undocumented
+            'notes': normalized  # undocumented
         },
         'fontMaster': {
             'alignmentZones': pointlist,
             'ascender': int,
             'capHeight': int,
             'customParameters': custom_params,
+            'customValue': int,  # undocumented
             'descender': descender_val,
             'guideLines': {  # undocumented
                 'angle': num,
@@ -131,29 +124,34 @@ def get_type_structure():
             },
             'horizontalStems': intlist,
             'id': str,
+            'italicAngle': num,  # undocumented
             'userData': user_data,
             'verticalStems': intlist,
             'weight': str,  # undocumented
-            'weightValue': int,
+            'weightValue': num,
             'width': str,  # undocumented
-            'widthValue': int,
+            'widthValue': num,
             'xHeight': int
         },
         'glyphs': {
             'color': int,  # undocumented
+            'export': truthy,  # undocumented
             'glyphname': str,
             'lastChange': glyphs_datetime,
             'layers': get_layer_type_structure(),
             'leftKerningGroup': str,
             'leftMetricsKey': str,
             'note': str,  # undocumented
+            'production': str,
             'rightKerningGroup': str,
             'rightMetricsKey': str,
             'unicode': hex_int,
             'widthMetricsKey': str  # undocumented
         },
         'instances': {
+            'active': truthy,  # undocumented
             'customParameters': custom_params,
+            'interpolationCustom': int,  # undocumented
             'interpolationWeight': int,  # undocumented
             'interpolationWidth': int,  # undocumented
             'name': str,  # undocumented
@@ -319,7 +317,7 @@ def version_minor(string):
     return num
 
 
-def feature_syntax_decode(string):
+def normalized(string):
     """Replace escaped characters with their intended characters.
     Unescapes curved quotes to straight quotes, so that we can definitely
     include this casted data in feature syntax.
@@ -349,10 +347,12 @@ def feature_syntax_encode(string):
 
 def custom_params(param_list):
     """Cast some known data in custom parameters."""
-    
+
     for param in param_list:
-        name = param['name']
+        name = normalized(param['name'])
         value = param['value']
+
+        param['name'] = name
         if name in CUSTOM_INT_PARAMS:
             param['value'] = int(value)
         if name in CUSTOM_FLOAT_PARAMS:
@@ -361,8 +361,6 @@ def custom_params(param_list):
             param['value'] = truthy(value)
         if name in CUSTOM_INTLIST_PARAMS:
             param['value'] = intlist(value)
-        elif name == 'DisableAllAutomaticBehaviour':
-            param['value'] = truthy(value)
 
     return param_list
 
@@ -373,7 +371,7 @@ def user_data(data_dict):
     num_params = ('GSOffsetHorizontal', 'GSOffsetVertical')
 
     new_data = {}
-    for key, val in data_dict.iteritems():
+    for key, val in data_dict.items():
         if key in num_params:
             new_data[key] = num(val)
 

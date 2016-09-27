@@ -16,10 +16,10 @@
 from __future__ import print_function, division, absolute_import
 
 import unittest
-from robofab.world import RFont
+from defcon import Font
 
-from glyphs2ufo import torf
-from glyphs2ufo.torf import set_redundant_data, build_family_name, build_style_name, build_postscript_name
+from glyphsLib import builder
+from glyphsLib.builder import set_redundant_data, build_style_name
 
 
 _warnings = []
@@ -37,38 +37,38 @@ def _check_warnings():
     return checked
 
 
-class BuildNameTest(unittest.TestCase):
-    def test_family_regular_width(self):
-        self.assertEquals(build_family_name('MyFont', {}, 'width'), 'MyFont')
-
-    def test_family_nonregular_width(self):
-        self.assertEquals(
-            build_family_name('MyFont', {'width': 'Condensed'}, 'width'),
-            'MyFont Condensed')
+class BuildStyleNameTest(unittest.TestCase):
+    def _build(self, data, italic):
+        return build_style_name(data, 'width', 'weight', 'custom', italic)
 
     def test_style_regular_weight(self):
-        self.assertEquals(build_style_name({}, 'weight', False), 'Regular')
-        self.assertEquals(build_style_name({}, 'weight', True), 'Italic')
-        self.assertEquals(build_style_name(
-            {'weight': 'Regular'}, 'weight', True), 'Italic')
+        self.assertEquals(self._build({}, False), 'Regular')
+        self.assertEquals(self._build({}, True), 'Italic')
+        self.assertEquals(
+            self._build({'weight': 'Regular'}, True), 'Italic')
 
     def test_style_nonregular_weight(self):
         self.assertEquals(
-            build_style_name({'weight': 'Thin'}, 'weight', False), 'Thin')
+            self._build({'weight': 'Thin'}, False), 'Thin')
         self.assertEquals(
-            build_style_name({'weight': 'Thin'}, 'weight', True), 'Thin Italic')
+            self._build({'weight': 'Thin'}, True), 'Thin Italic')
 
-    def test_postscript(self):
+    def test_style_nonregular_width(self):
         self.assertEquals(
-            build_postscript_name('MyFont', 'Regular'), 'MyFont-Regular')
+            self._build({'width': 'Condensed'}, False), 'Condensed')
         self.assertEquals(
-            build_postscript_name('MyFont Condensed', 'Thin Italic'),
-            'MyFontCondensed-ThinItalic')
+            self._build({'width': 'Condensed'}, True), 'Condensed Italic')
+        self.assertEquals(
+            self._build({'weight': 'Thin', 'width': 'Condensed'}, False),
+            'Condensed Thin')
+        self.assertEquals(
+            self._build({'weight': 'Thin', 'width': 'Condensed'}, True),
+            'Condensed Thin Italic')
 
 
 class SetRedundantDataTest(unittest.TestCase):
     def _run_on_ufo(self, family_name, style_name):
-        ufo = RFont()
+        ufo = Font()
         ufo.info.familyName = family_name
         ufo.info.styleName = style_name
         set_redundant_data(ufo)
@@ -81,14 +81,6 @@ class SetRedundantDataTest(unittest.TestCase):
             reg_ufo.info.openTypeOS2WeightClass,
             italic_ufo.info.openTypeOS2WeightClass)
 
-    def test_sets_regular_weight_class_and_warns_for_unknown_weight(self):
-        reg_ufo = self._run_on_ufo('MyFont', 'Regular')
-        bogus_ufo = self._run_on_ufo('MyFont', 'abc123')
-        self.assertEquals(
-            reg_ufo.info.openTypeOS2WeightClass,
-            bogus_ufo.info.openTypeOS2WeightClass)
-        self.assertTrue(_check_warnings())
-
     def test_sets_weight_lib_entry_only_nonregular(self):
         reg_ufo = self._run_on_ufo('MyFont', 'Regular')
         italic_ufo = self._run_on_ufo('MyFont', 'Italic')
@@ -100,12 +92,12 @@ class SetRedundantDataTest(unittest.TestCase):
     def test_sets_width_lib_entry_only_condensed(self):
         reg_ufo = self._run_on_ufo('MyFont', 'Regular')
         italic_ufo = self._run_on_ufo('MyFont', 'Italic')
-        cond_ufo = self._run_on_ufo('MyFont Condensed', 'Regular')
-        semicond_ufo = self._run_on_ufo('MyFont SemiCondensed', 'Regular')
+        cond_ufo = self._run_on_ufo('MyFont', 'Condensed')
+        cond_italic_ufo = self._run_on_ufo('MyFont', 'Condensed Italic')
         self.assertFalse(reg_ufo.lib)
         self.assertFalse(italic_ufo.lib)
         self.assertTrue(cond_ufo.lib)
-        self.assertTrue(semicond_ufo.lib)
+        self.assertTrue(cond_italic_ufo.lib)
 
     def _run_style_map_names_test(self, args):
         for family, style, expected_family, expected_style in args:
@@ -119,23 +111,25 @@ class SetRedundantDataTest(unittest.TestCase):
             ('MyFont', 'Regular', 'MyFont', 'regular'),
             ('MyFont', 'Bold', 'MyFont', 'bold'),
             ('MyFont', 'Italic', 'MyFont', 'italic'),
-            ('MyFont', 'Bold Italic', 'MyFont', 'bold italic'),
-            ('MyFont Condensed', '', 'MyFont Condensed', 'regular'),
-            ('MyFont Condensed', 'Regular', 'MyFont Condensed', 'regular'),
-            ('MyFont Condensed', 'Bold', 'MyFont Condensed', 'bold'),
-            ('MyFont Condensed', 'Italic', 'MyFont Condensed', 'italic'),
-            ('MyFont Condensed', 'Bold Italic', 'MyFont Condensed',
+            ('MyFont', 'Bold Italic', 'MyFont', 'bold italic')))
+
+    def test_moves_width_to_family(self):
+        self._run_style_map_names_test((
+            ('MyFont', 'Condensed', 'MyFont Condensed', 'regular'),
+            ('MyFont', 'Condensed Bold', 'MyFont Condensed', 'bold'),
+            ('MyFont', 'Condensed Italic', 'MyFont Condensed', 'italic'),
+            ('MyFont', 'Condensed Bold Italic', 'MyFont Condensed',
              'bold italic')))
 
     def test_moves_nonbold_weight_to_family(self):
         self._run_style_map_names_test((
             ('MyFont', 'Thin', 'MyFont Thin', 'regular'),
             ('MyFont', 'Thin Italic', 'MyFont Thin', 'italic'),
-            ('MyFont Condensed', 'Thin', 'MyFont Condensed Thin', 'regular'),
-            ('MyFont Condensed', 'Thin Italic', 'MyFont Condensed Thin',
+            ('MyFont', 'Condensed Thin', 'MyFont Condensed Thin', 'regular'),
+            ('MyFont', 'Condensed Thin Italic', 'MyFont Condensed Thin',
              'italic')))
 
 
 if __name__ == '__main__':
-    torf.warn = _add_warning
+    builder.warn = _add_warning
     unittest.main()
