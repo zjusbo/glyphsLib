@@ -71,8 +71,8 @@ def clear_data(data):
 
 
 def cast_to_number_or_bool(inputstr):
-    """Cast a string to int, float or bool. Return original string if it can't be
-    converted.
+    """Cast a string to int, float or bool. Return the original string if it
+    can't be converted.
 
     Scientific expression is converted into float.
     """
